@@ -253,6 +253,23 @@ async fn main(spawner: Spawner) {
         &mut schedule,
     );*/
 
+    info!("UI: Waiting for NFC card...");
+
+    loop {
+        // Wait for id card read or timeout
+        #[allow(clippy::single_match_else)]
+        let uid = match with_timeout(IDLE_TIMEOUT, nfc.read()).await {
+            // Id card detected
+            Ok(res) => res?,
+            // Idle timeout, enter power saving
+            Err(TimeoutError) => {
+                warn!("Dame una tarjeta.");
+            }
+        };
+        info!("UI: NFC card {}", uid);
+    }
+
+    /*
     loop {
         match ui.init().await {
             // Success: continue
@@ -286,4 +303,5 @@ async fn main(spawner: Spawner) {
             }
         }
     }
+    */
 }

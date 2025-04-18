@@ -440,6 +440,7 @@ impl<RNG: RngCore, I2C: I2c, IRQ: Wait<Error = Infallible>> Ui<'_, RNG, I2C, IRQ
         }
     }
 
+
     /// Purchase the given article
     async fn purchase(
         &mut self,
