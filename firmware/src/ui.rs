@@ -236,6 +236,7 @@ impl<'a, RNG: RngCore, I2C: I2c, IRQ: Wait<Error = Infallible>> Ui<'a, RNG, I2C,
         self.submit_telemetry().await?;
 
         // Either wait for id card read or schedule time
+        // This looks like our hook into the card reading stuff
         let schedule_timer = self.schedule.timer();
         let user_id = match select(self.authenticate_user(), schedule_timer).await {
             // Id card read
