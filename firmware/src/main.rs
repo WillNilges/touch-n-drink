@@ -39,25 +39,11 @@
 #![no_std]
 #![no_main]
 
-mod article;
-mod buzzer;
 mod config;
-mod display;
 mod error;
-mod http;
 mod json;
-mod keypad;
-mod mixpanel;
 mod nfc;
 mod pn532;
-mod schedule;
-mod screen;
-mod telemetry;
-mod time;
-mod ui;
-mod user;
-mod vereinsflieger;
-mod wifi;
 
 use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
 use embassy_executor::Spawner;
@@ -78,6 +64,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use log::{error, info};
 use rand_core::RngCore;
+use crate::error::{Error, ErrorKind};
 
 extern crate alloc;
 
@@ -258,14 +245,15 @@ async fn main(spawner: Spawner) {
     loop {
         // Wait for id card read or timeout
         #[allow(clippy::single_match_else)]
-        let uid = match with_timeout(IDLE_TIMEOUT, nfc.read()).await {
+        let uid = match with_timeout(Duration::from_secs(10), nfc.read()).await {
             // Id card detected
             Ok(res) => res?,
             // Idle timeout, enter power saving
             Err(TimeoutError) => {
-                warn!("Dame una tarjeta.");
+                info!("Dame una tarjeta.");
             }
         };
+        //debug!(uid);
         info!("UI: NFC card {}", uid);
     }
 
