@@ -39,25 +39,11 @@
 #![no_std]
 #![no_main]
 
-mod article;
-mod buzzer;
 mod config;
-mod display;
 mod error;
-mod http;
 mod json;
-mod keypad;
-mod mixpanel;
 mod nfc;
 mod pn532;
-mod schedule;
-mod screen;
-mod telemetry;
-mod time;
-mod ui;
-mod user;
-mod vereinsflieger;
-mod wifi;
 
 use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
 use embassy_executor::Spawner;
@@ -78,6 +64,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_println::println;
 use log::{error, info};
 use rand_core::RngCore;
+use crate::error::{Error, ErrorKind};
 
 extern crate alloc;
 
@@ -120,7 +107,7 @@ async fn main(spawner: Spawner) {
         .with_watchdog(WatchdogConfig::default());
     let peripherals = esp_hal::init(esp_config);
     let mut rng = Rng::new(peripherals.RNG);
-    let _led = Output::new(peripherals.GPIO8, Level::High);
+    //let _led = Output::new(peripherals.GPIO8, Level::High);
 
     // Initialize global allocator
     esp_alloc::heap_allocator!(150 * 1024);
@@ -137,8 +124,8 @@ async fn main(spawner: Spawner) {
     let config = config::Config::read().await;
 
     // Initialize article and user look up tables
-    let mut articles = article::Articles::new(config.vf_article_ids);
-    let mut users = user::Users::new();
+    //let mut articles = article::Articles::new(config.vf_article_ids);
+    //let mut users = user::Users::new();
 
     // Initialize I2C controller
     let i2c_config = I2cConfig::default()
@@ -158,13 +145,14 @@ async fn main(spawner: Spawner) {
     let i2c: Mutex<NoopRawMutex, _> = Mutex::new(i2c);
 
     // Initialize display
-    let mut display = display::Display::new(I2cDevice::new(&i2c))
-        .await
-        // Panic on failure since without a display there's no reasonable way to tell the user
-        .expect("Display initialization failed");
-    let _ = display.screen(&screen::Splash).await;
+    //let mut display = display::Display::new(I2cDevice::new(&i2c))
+    //    .await
+    //    // Panic on failure since without a display there's no reasonable way to tell the user
+    //    .expect("Display initialization failed");
+    //let _ = display.screen(&screen::Splash).await;
 
     // Initialize keypad
+    /*
     let mut keypad = keypad::Keypad::new(
         [
             Input::new(peripherals.GPIO5, Pull::Up),
@@ -178,6 +166,7 @@ async fn main(spawner: Spawner) {
             OutputOpenDrain::new(peripherals.GPIO3, Level::High, Pull::None),
         ],
     );
+    */
 
     // Initialize NFC reader
     let nfc_irq = Input::new(peripherals.GPIO20, Pull::Up);
@@ -186,6 +175,8 @@ async fn main(spawner: Spawner) {
         // Panic on failure since an initialization error indicates a serious error
         .expect("NFC reader initialization failed");
 
+    /*
+    // TODO: Turn this back on later tm
     // Initialize Wifi
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let wifi = wifi::Wifi::new(
@@ -199,13 +190,17 @@ async fn main(spawner: Spawner) {
     )
     // Panic on failure since an initialization error indicates a static configuration error
     .expect("Wifi initialization failed");
+    */
 
     // Initialize HTTP client
     // As this allocates quite a bit of memory (e.g. for TLS buffers), only a single http client
     // is created that can be passed to an API client whenever a connection needs to be established
+    /*
     let mut http_resources = http::Resources::new();
     let mut http = http::Http::new(&wifi, rng.next_u64(), &mut http_resources);
+    */
 
+    /*
     // Initialize Vereinsflieger API client
     let mut vereinsflieger = vereinsflieger::Vereinsflieger::new(
         &config.vf_username,
@@ -219,7 +214,9 @@ async fn main(spawner: Spawner) {
         const_hex::Buffer::new().const_format(&Efuse::read_base_mac_address());
     let mut telemetry = telemetry::Telemetry::new(config.mp_token.as_deref(), device_id.as_str());
     telemetry.track(telemetry::Event::SystemStart);
+    */
 
+    /*
     // Initialize buzzer
     let mut buzzer = buzzer::Buzzer::new(peripherals.LEDC, peripherals.GPIO4);
     let _ = buzzer.startup().await;
@@ -241,8 +238,26 @@ async fn main(spawner: Spawner) {
         &mut users,
         &mut telemetry,
         &mut schedule,
-    );
+    );*/
 
+    info!("UI: Waiting for NFC card...");
+
+    loop {
+        // Wait for id card read or timeout
+        #[allow(clippy::single_match_else)]
+        let uid = match with_timeout(Duration::from_secs(10), nfc.read()).await {
+            // Id card detected
+            Ok(res) => res?,
+            // Idle timeout, enter power saving
+            Err(TimeoutError) => {
+                info!("Dame una tarjeta.");
+            }
+        };
+        //debug!(uid);
+        info!("UI: NFC card {}", uid);
+    }
+
+    /*
     loop {
         match ui.init().await {
             // Success: continue
@@ -276,4 +291,5 @@ async fn main(spawner: Spawner) {
             }
         }
     }
+    */
 }
